@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<extension key="org.chorusamerica.membershipreports" type="module">
+  <file>membershipreports</file>
+  <name>Membership Reports</name>
+  <description>
+    Reports which provide insight into membership events such as Join,
+    Conferment, Renewal, Rejoin, and Lapse.
+  </description>
+  <license>AGPL-3.0</license>
+  <maintainer>
+    <author>Chorus America</author>
+    <email>webmaster@chorusamerica.org</email>
+  </maintainer>
+  <urls>
+    <url desc="Main Extension Page">https://github.com/ginkgostreet/org.chorusamerica.membershipreports</url>
+    <url desc="Documentation">https://github.com/ginkgostreet/org.chorusamerica.membershipreports#readme</url>
+    <url desc="Support">https://github.com/ginkgostreet/org.chorusamerica.membershipreports/issues</url>
+    <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
+  </urls>
+  <releaseDate>2019-01-28</releaseDate>
+  <version>0.1.0</version>
+  <compatibility>
+    <ver>4.7</ver>
+  </compatibility>
+  <comments></comments>
+  <civix>
+    <namespace>CRM/Membershipreports</namespace>
+  </civix>
+</extension>
