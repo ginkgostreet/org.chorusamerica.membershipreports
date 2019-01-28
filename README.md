@@ -1,44 +1,32 @@
 # Membership Reports
 
+Membership Reports (org.chorusamerica.membershipreports) is an extension for
+[CiviCRM](https://civicrm.org) which provides reports for membership lifecycle
+events, as defined below.
+
 ![Screenshot](/images/screenshot.png)
 
-(*FIXME: In one or two paragraphs, describe what the extension does and why one would download it. *)
+## Installation
 
-The extension is licensed under [AGPL-3.0](LICENSE.txt).
+This extension has not yet been published for in-app installation. [General
+extension installation instructions](https://docs.civicrm.org/sysadmin/en/latest/customize/extensions/#installing-a-new-extension)
+are available in the CiviCRM System Administrator Guide.
 
 ## Requirements
 
 * PHP v5.4+
-* CiviCRM (*FIXME: Version number*)
+* CiviCRM v4.7+
 
-## Installation (Web UI)
+## Technical Details
 
-This extension has not yet been published for installation via the web UI.
+| Event       | Definition | Implementation                                  |
+| ----------- | ---------- | ----------------------------------------------- |
+| Join        | The act of becoming a direct member for the first time. | Report instance "Membership Join Events last month," based off of core template `CRM_Membershipreports_Form_Report`. The history in `membership_log` isn't necessary to find Join events; the `join_date` ("Member Since" in the user interface) suffices. |
 
-## Installation (CLI, Zip)
+## Known Issues/Limitations
 
-Sysadmins and developers may download the `.zip` file for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
+None
 
-```bash
-cd <extension-dir>
-cv dl org.chorusamerica.membershipreports@https://github.com/FIXME/org.chorusamerica.membershipreports/archive/master.zip
-```
+## License
 
-## Installation (CLI, Git)
-
-Sysadmins and developers may clone the [Git](https://en.wikipedia.org/wiki/Git) repo for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
-
-```bash
-git clone https://github.com/FIXME/org.chorusamerica.membershipreports.git
-cv en membershipreports
-```
-
-## Usage
-
-(* FIXME: Where would a new user navigate to get started? What changes would they see? *)
-
-## Known Issues
-
-(* FIXME *)
+[AGPL-3.0](https://github.com/ginkgostreet/org.chorusamerica.membershipmerge/blob/master/LICENSE.txt)
