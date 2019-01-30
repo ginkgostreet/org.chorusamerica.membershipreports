@@ -5,6 +5,13 @@ use CRM_Membershipreports_ExtensionUtil as E;
 class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Detail {
 
   /**
+   * @var array
+   *   Details of the "Abandoned" membership status as returned by
+   *   api.MembershipStatus.getsingle.
+   */
+  protected $abandonedStatus = [];
+
+  /**
    * @var callable
    *   The method which will build the JOIN clause for the membership log table.
    */
@@ -17,6 +24,23 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
     // Call the parent method first; we need to modify the product of its work.
     parent::__construct();
 
+    // Contributions are not part of this report, as they cannot be reliably
+    // tied to a specific membership event -- payments link to civicrm_membership,
+    // not civicrm_membership_log, and payments and log events need not occur
+    // at the same time. Moreover, memberships can have more than one
+    // contribution associated with them, and the default SQL for this report
+    // joins them such that duplicate rows appear for a single event, which is
+    // nonsensical.
+    unset($this->_columns['civicrm_contribution']);
+    unset($this->_customGroupExtends[array_keys($this->_customGroupExtends, 'Contribution')[0]]);
+
+    try {
+      $this->abandonedStatus = civicrm_api3('MembershipStatus', 'getsingle', ['name' => 'Abandoned']);
+    }
+    catch (Exception $e) {
+      $this->abandonedStatus = array();
+    }
+
     // Prepend the Membership Log for visual prominence.
     $this->_columns = $this->getMembershipLogDefinition() + $this->_columns;
   }
@@ -27,11 +51,27 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   public function addRules() {
     parent::addRules();
 
+    $this->addFormRule([$this, 'validateConfermentSelections']);
     $this->addFormRule([$this, 'validateLifecycleEventSelections']);
   }
 
   /**
-   * Builds the JOIN clause for conferment event reports.
+   * Builds the JOIN clause for Abandonment event reports.
+   */
+  protected function buildAbandonmentJoin() {
+    $this->_from .= "
+      INNER JOIN (
+          SELECT membership_id, MIN(modified_date) AS modified_date
+          FROM civicrm_membership_log
+          WHERE status_id = {$this->abandonedStatus['id']}
+          GROUP BY membership_id
+      ) {$this->_aliases['civicrm_membership_log']}
+          ON {$this->_aliases['civicrm_membership']}.id =
+             {$this->_aliases['civicrm_membership_log']}.membership_id";
+  }
+
+  /**
+   * Builds the JOIN clause for Conferment event reports.
    */
   protected function buildConfermentJoin() {
     $this->_from .= "
@@ -47,7 +87,8 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   /**
    * Builds the FROM clause for the report query.
    *
-   * Overridden to include a JOIN to the civicrm_membership_log table.
+   * Overridden to include a JOIN to the civicrm_membership_log table and to
+   * remove a JOIN to civicrm_contribution.
    */
   public function from() {
     $this->setFromBase('civicrm_contact');
@@ -60,21 +101,13 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
                           ON {$this->_aliases['civicrm_membership_status']}.id =
                              {$this->_aliases['civicrm_membership']}.status_id ";
 
-    if (is_callable($this->logJoinBuilder)) {
-      call_user_func($this->logJoinBuilder);
+    if (!is_callable($this->logJoinBuilder)) {
+      throw new \CRM_Core_Exception('Callback for building civicrm_membership_log JOIN clause not found', 0, ['callback' => $this->logJoinBuilder]);
     }
+    call_user_func($this->logJoinBuilder);
     $this->joinAddressFromContact();
     $this->joinPhoneFromContact();
     $this->joinEmailFromContact();
-
-    //used when contribution field is selected.
-    if ($this->isTableSelected('civicrm_contribution')) {
-      $this->_from .= "
-             LEFT JOIN civicrm_membership_payment cmp
-                 ON {$this->_aliases['civicrm_membership']}.id = cmp.membership_id
-             LEFT JOIN civicrm_contribution {$this->_aliases['civicrm_contribution']}
-                 ON cmp.contribution_id={$this->_aliases['civicrm_contribution']}.id\n";
-    }
   }
 
   /**
@@ -82,9 +115,15 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
    *   Machine name => human readable label
    */
   protected function getLifecycleEventOptions() {
-    return [
+    $options = [
       'Conferment' => E::ts('Conferment'),
     ];
+
+    if (!empty($this->abandonedStatus)) {
+      $options['Abandonment'] = E::ts('Abandonment');
+    }
+
+    return $options;
   }
 
   /**
@@ -125,26 +164,32 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   }
 
   /**
-   * Pre process function.
+   * Validates the user's selections to ensure that only conferred memberships
+   * are considered for the Conferment event, and that conferred memberships are
+   * excluded from all other events.
    *
-   * Called prior to building the form.
-   *
-   * Note that the form is built even when the form is submitted (i.e., you can
-   * be assured that if postProcess fires, preProcess has already fired).
-   *
-   * The purpose of this override is to ensure the setting of whatever
-   * additional filters are required to target conferred memberships when the
-   * user selects conferment events as the subject of the report. Doing so here
-   * rather than in postProcess() ensures the UI is updated with the forced
-   * selections.
+   * @param array $values
+   *   User-submitted values to validate.
+   * @return mixed
+   *   Boolean TRUE if valid, else array of errors [field_key => err_msg]
    */
-  public function preProcess() {
-    $event = CRM_Utils_Array::value('lifecycle_event_type_value', $this->_submitValues);
-    if ($event === 'Conferment') {
-      $this->_submitValues['owner_membership_id_op'] = 'nnll';
-      $this->_submitValues['owner_membership_id_value'] = '';
+  public function validateConfermentSelections($values) {
+    $errors = [];
+
+    $ownerIdSupplied = (strlen(trim($values['owner_membership_id_value'])) > 0)
+        || (strlen(trim($values['owner_membership_id_min'])) > 0)
+        || (strlen(trim($values['owner_membership_id_max'])) > 0);
+    $membershipIsConferred = ($values['owner_membership_id_op'] === 'nnll') || $ownerIdSupplied;
+    $isConfermentEvent = $values['lifecycle_event_type_value'] === 'Conferment';
+
+    if ($isConfermentEvent && !$membershipIsConferred) {
+      $errors['lifecycle_event_type_value'] = E::ts('The selection for the Membership Owner ID filter is incompatible with the Conferment event; direct memberships must be excluded.');
     }
-    parent::preProcess();
+    if (!$isConfermentEvent && $membershipIsConferred) {
+      $errors['lifecycle_event_type_value'] = E::ts('The selection for the Membership Owner ID filter is incompatible with this event; conferred memberships must be excluded.');
+    }
+
+    return empty($errors) ? TRUE : $errors;
   }
 
   /**
