@@ -143,13 +143,18 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
           ],
         ],
         'filters' => [
-          'lifecycle_event_type' => array(
+          'lifecycle_event_type' => [
             'pseudofield' => TRUE, // prevents automatic processing in WHERE builder
             'operatorType' => CRM_Report_Form::OP_SELECT,
             'options' => $this->getLifecycleEventOptions(),
             'title' => E::ts('Type of Membership Lifecycle Event'),
             'type' => CRM_Utils_Type::T_INT,
-          )
+          ],
+          'modified_date' => [
+            'operatorType' => CRM_Report_Form::OP_DATE,
+            'title' => $modifiedDateLabel,
+            'type' => CRM_Utils_Type::T_DATE,
+          ],
         ],
         'order_bys' => array(
           'modified_date' => array(
