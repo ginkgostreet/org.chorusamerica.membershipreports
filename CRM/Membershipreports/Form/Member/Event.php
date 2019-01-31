@@ -266,7 +266,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
    * @return mixed
    *   Boolean TRUE if valid, else array of errors [field_key => err_msg]
    */
-  public function validateConfermentSelections($values) {
+  public function validateConfermentSelections(array $values) {
     $errors = [];
 
     $ownerIdSupplied = (strlen(trim($values['owner_membership_id_value'])) > 0)
@@ -295,7 +295,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
    * @return mixed
    *   Boolean TRUE if valid, else array of errors [field_key => err_msg]
    */
-  public function validateLifecycleEventSelections($values) {
+  public function validateLifecycleEventSelections(array $values) {
     $errors = [];
     if ($values['lifecycle_event_type_op'] !== 'eq') {
       $errors['lifecycle_event_type_op'] = E::ts('Operator not supported');
