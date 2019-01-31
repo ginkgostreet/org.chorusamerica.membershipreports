@@ -85,6 +85,26 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   }
 
   /**
+   * Builds the JOIN clause for Lapse event reports.
+   */
+  protected function buildLapseJoin() {
+    $expiredStatusId = civicrm_api3('MembershipStatus', 'getvalue', [
+      'name' => 'Expired',
+      'return' => 'id',
+    ]);
+
+    $this->_from .= "
+      INNER JOIN (
+          SELECT membership_id, modified_date
+          FROM civicrm_membership_log AS currentLog
+          WHERE status_id = $expiredStatusId
+          AND {$this->selectFromPreviousLog(['status_id'])} <> $expiredStatusId
+      ) {$this->_aliases['civicrm_membership_log']}
+          ON {$this->_aliases['civicrm_membership']}.id =
+             {$this->_aliases['civicrm_membership_log']}.membership_id";
+  }
+
+  /**
    * Builds the JOIN clause for Rejoin event reports.
    */
   protected function buildRejoinJoin() {
@@ -161,6 +181,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
       'Conferment' => E::ts('Conferment'),
       'Renewal' => E::ts('Renewal'),
       'Rejoin' => E::ts('Rejoin'),
+      'Lapse' => E::ts('Lapse'),
     ];
 
     if (!empty($this->abandonedStatus)) {
