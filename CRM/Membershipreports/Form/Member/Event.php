@@ -85,9 +85,31 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   }
 
   /**
+   * Builds the JOIN clause for Rejoin event reports.
+   */
+  protected function buildRejoinJoin() {
+    $expiredFirst = TRUE;
+    $this->buildReupJoin($expiredFirst);
+  }
+
+  /**
    * Builds the JOIN clause for Renewal event reports.
    */
   protected function buildRenewalJoin() {
+    $expiredFirst = FALSE;
+    $this->buildReupJoin($expiredFirst);
+  }
+
+  /**
+   * Builds the JOIN clause for Reup (Renewal and Rejoin) event reports.
+   *
+   * @param bool $expiredFirst
+   *   To return membership reup events where the membership was allowed to
+   *   expire first, set to TRUE. For reups while the membership was still
+   *   active (Renewals), set to FALSE.
+   */
+  protected function buildReupJoin($expiredFirst) {
+    $comparisonOp = $expiredFirst ? '=' : '<>';
     $expiredStatusId = civicrm_api3('MembershipStatus', 'getvalue', [
       'name' => 'Expired',
       'return' => 'id',
@@ -98,7 +120,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
           SELECT membership_id, modified_date
           FROM civicrm_membership_log AS currentLog
           WHERE end_date > {$this->selectFromPreviousLog(['end_date'])}
-          AND {$this->selectFromPreviousLog(['status_id'])} <> $expiredStatusId
+          AND {$this->selectFromPreviousLog(['status_id'])} $comparisonOp $expiredStatusId
       ) {$this->_aliases['civicrm_membership_log']}
           ON {$this->_aliases['civicrm_membership']}.id =
              {$this->_aliases['civicrm_membership_log']}.membership_id";
@@ -138,6 +160,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
     $options = [
       'Conferment' => E::ts('Conferment'),
       'Renewal' => E::ts('Renewal'),
+      'Rejoin' => E::ts('Rejoin'),
     ];
 
     if (!empty($this->abandonedStatus)) {
