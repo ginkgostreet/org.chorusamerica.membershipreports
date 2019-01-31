@@ -7,8 +7,6 @@ events, as defined below.
 This extension provides most of its functionality through its "Membership
 Lifecycle Event (Detail)" Report Template.
 
-![Screenshot](/images/screenshot.png)
-
 ## Installation
 
 This extension has not yet been published for in-app installation. [General
