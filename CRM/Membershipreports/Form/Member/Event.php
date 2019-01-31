@@ -85,6 +85,26 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   }
 
   /**
+   * Builds the JOIN clause for Renewal event reports.
+   */
+  protected function buildRenewalJoin() {
+    $expiredStatusId = civicrm_api3('MembershipStatus', 'getvalue', [
+      'name' => 'Expired',
+      'return' => 'id',
+    ]);
+
+    $this->_from .= "
+      INNER JOIN (
+          SELECT membership_id, modified_date
+          FROM civicrm_membership_log AS currentLog
+          WHERE end_date > {$this->selectFromPreviousLog(['end_date'])}
+          AND {$this->selectFromPreviousLog(['status_id'])} <> $expiredStatusId
+      ) {$this->_aliases['civicrm_membership_log']}
+          ON {$this->_aliases['civicrm_membership']}.id =
+             {$this->_aliases['civicrm_membership_log']}.membership_id";
+  }
+
+  /**
    * Builds the FROM clause for the report query.
    *
    * Overridden to include a JOIN to the civicrm_membership_log table and to
@@ -117,6 +137,7 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
   protected function getLifecycleEventOptions() {
     $options = [
       'Conferment' => E::ts('Conferment'),
+      'Renewal' => E::ts('Renewal'),
     ];
 
     if (!empty($this->abandonedStatus)) {
@@ -166,6 +187,29 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
         ),
       )
     ];
+  }
+
+  /**
+   * Generates a correlated subquery so that comparisons can be made between any
+   * log record in a membership's history and the immediately preceding one.
+   *
+   * @param array $columns
+   *   Columns for the subquery to return.
+   * @return string
+   *   SQL subquery.
+   */
+  protected function selectFromPreviousLog(array $columns) {
+    $selectFields = implode(', ', $columns);
+
+    return "
+      (
+          SELECT $selectFields
+          FROM civicrm_membership_log
+          WHERE modified_date < currentLog.modified_date
+          AND membership_id = currentLog.membership_id
+          ORDER BY modified_date DESC
+          LIMIT 1
+      )";
   }
 
   /**
