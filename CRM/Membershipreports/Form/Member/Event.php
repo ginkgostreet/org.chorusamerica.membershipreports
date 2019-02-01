@@ -272,13 +272,14 @@ class CRM_Membershipreports_Form_Member_Event extends CRM_Report_Form_Member_Det
     $ownerIdSupplied = (strlen(trim($values['owner_membership_id_value'])) > 0)
         || (strlen(trim($values['owner_membership_id_min'])) > 0)
         || (strlen(trim($values['owner_membership_id_max'])) > 0);
-    $membershipIsConferred = ($values['owner_membership_id_op'] === 'nnll') || $ownerIdSupplied;
-    $isConfermentEvent = $values['lifecycle_event_type_value'] === 'Conferment';
+    $confereesSpecified = ($values['owner_membership_id_op'] === 'nnll') || $ownerIdSupplied;
+    $confereesExcluded = ($values['owner_membership_id_op'] === 'nll');
+    $isConfermentEvent = ($values['lifecycle_event_type_value'] === 'Conferment');
 
-    if ($isConfermentEvent && !$membershipIsConferred) {
+    if ($isConfermentEvent && !$confereesSpecified) {
       $errors['lifecycle_event_type_value'] = E::ts('The selection for the Membership Owner ID filter is incompatible with the Conferment event; direct memberships must be excluded.');
     }
-    if (!$isConfermentEvent && $membershipIsConferred) {
+    if (!$isConfermentEvent && !$confereesExcluded) {
       $errors['lifecycle_event_type_value'] = E::ts('The selection for the Membership Owner ID filter is incompatible with this event; conferred memberships must be excluded.');
     }
 
