@@ -8,7 +8,7 @@
  * as "API and the Art of Installation" (at
  * https://civicrm.org/blogs/totten/api-and-art-installation).
  */
-use CRM_Membershipmerge_ExtensionUtil as E;
+use CRM_Membershipreports_ExtensionUtil as E;
 
 return array(
   array(
